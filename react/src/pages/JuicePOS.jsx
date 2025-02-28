@@ -1,4 +1,6 @@
+// JuicePOS.jsx
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
     Search,
     ShoppingCart,
@@ -7,19 +9,12 @@ import {
     Trash2,
     X,
     Printer,
+    BookOpen,
 } from "lucide-react";
-
-import calamansi from "../assets/calamansi-juice.png";
-import mango from "../assets/mango-juice.png";
-import coconut from "../assets/coconut-juice.png";
-import banana from "../assets/banana-juice.png";
-import lemon from "../assets/lemon-juice.png";
-import sweet_potato from "../assets/sweet-potato-juice.png";
-// You may need to provide images for these if they're not included
-import papaya from "../assets/calamansi-juice.png";
-import cucumber from "../assets/calamansi-juice.png";
+import { menuItems } from "../data/recipeData";
 
 const JuicePOS = () => {
+    const navigate = useNavigate();
     const [searchTerm, setSearchTerm] = useState("");
     const [cart, setCart] = useState([]);
     const [isCartVisible, setIsCartVisible] = useState(false);
@@ -29,21 +24,10 @@ const JuicePOS = () => {
     const [currentDate, setCurrentDate] = useState("");
     const [currentTime, setCurrentTime] = useState("");
 
-    const menuItems = [
-        { id: "CJ1", name: "Calamansi Juice", price: 45, image: calamansi },
-        { id: "CN1", name: "Coconut Juice", price: 55, image: coconut },
-        { id: "PJ1", name: "Papaya Juice", price: 50, image: papaya },
-        { id: "LJ1", name: "Lemon Juice", price: 45, image: lemon },
-        { id: "CU1", name: "Cucumber Juice", price: 45, image: cucumber },
-        { id: "MS1", name: "Mango Shake", price: 65, image: mango },
-        { id: "BS1", name: "Banana Shake", price: 60, image: banana },
-        {
-            id: "SP1",
-            name: "Sweet Potato Milk Tea",
-            price: 75,
-            image: sweet_potato,
-        },
-    ];
+    // Navigate to instructions page
+    const goToInstructions = () => {
+        navigate("/instructions");
+    };
 
     // Set current date and time when component loads
     useEffect(() => {
@@ -70,9 +54,13 @@ const JuicePOS = () => {
             item.id.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    const addToCart = (item) => {
-        const existingItem = cart.find((cartItem) => cartItem.id === item.id);
+    const addToCart = (item, e) => {
+        // If there was an event and it has stopPropagation, call it
+        if (e && e.stopPropagation) {
+            e.stopPropagation();
+        }
 
+        const existingItem = cart.find((cartItem) => cartItem.id === item.id);
         if (existingItem) {
             setCart(
                 cart.map((cartItem) =>
@@ -92,7 +80,6 @@ const JuicePOS = () => {
 
     const removeFromCart = (itemId) => {
         const existingItem = cart.find((cartItem) => cartItem.id === itemId);
-
         if (existingItem.quantity === 1) {
             setCart(cart.filter((cartItem) => cartItem.id !== itemId));
         } else {
@@ -173,7 +160,6 @@ const JuicePOS = () => {
                 setIsCartVisible(false);
             }
         };
-
         window.addEventListener("resize", handleResize);
         return () => window.removeEventListener("resize", handleResize);
     }, []);
@@ -182,6 +168,19 @@ const JuicePOS = () => {
         <div className="flex flex-col md:flex-row h-screen bg-gray-100 p-2 pb-16 md:pb-2">
             {/* Menu Section */}
             <div className="w-full md:w-2/3 bg-white rounded-lg shadow-md p-4 mb-4 md:mb-0 md:mr-4 overflow-y-auto">
+                <div className="flex items-center justify-between mb-4">
+                    <h1 className="text-2xl font-bold text-green-700">
+                        Juice Menu
+                    </h1>
+                    <button
+                        onClick={goToInstructions}
+                        className="flex items-center bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors cursor-pointer"
+                    >
+                        <BookOpen size={18} className="mr-2" />
+                        <span>Instructions</span>
+                    </button>
+                </div>
+
                 <div className="flex items-center bg-gray-100 rounded-md p-2 mb-4">
                     <Search className="text-gray-400 mr-2" size={20} />
                     <input
@@ -193,15 +192,11 @@ const JuicePOS = () => {
                     />
                 </div>
 
-                <h1 className="text-2xl font-bold mb-4 text-green-700">
-                    Juice Menu
-                </h1>
-
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                     {filteredItems.map((item) => (
                         <div
                             key={item.id}
-                            className="bg-gray-50 rounded-lg p-4 cursor-pointer hover:bg-green-50 transition-all border border-green-100 flex flex-col items-center"
+                            className="bg-gray-50 rounded-lg p-4 cursor-pointer hover:bg-green-50 transition-all border border-green-100 flex flex-col items-center relative"
                             onClick={() => addToCart(item)}
                         >
                             <div className="flex justify-between items-start w-full">
@@ -288,7 +283,6 @@ const JuicePOS = () => {
                 <h2 className="text-xl font-bold mb-4 text-green-700">
                     Order Menu
                 </h2>
-
                 <div className="flex-grow overflow-y-auto mb-4">
                     {cart.length === 0 ? (
                         <p className="text-gray-500 text-center my-8">
@@ -313,7 +307,6 @@ const JuicePOS = () => {
                                         ₱{item.price.toFixed(2)}
                                     </p>
                                 </div>
-
                                 <div className="flex items-center">
                                     <button
                                         className="bg-gray-200 px-2 rounded-l cursor-pointer"
@@ -331,7 +324,7 @@ const JuicePOS = () => {
                                         className="bg-gray-200 px-2 rounded-r cursor-pointer"
                                         onClick={(e) => {
                                             e.stopPropagation();
-                                            addToCart(item);
+                                            addToCart(item, e);
                                         }}
                                     >
                                         +
@@ -351,7 +344,6 @@ const JuicePOS = () => {
                         ))
                     )}
                 </div>
-
                 <div className="border-t pt-4">
                     <div className="flex justify-between items-center mb-2">
                         <span className="font-medium">Total Items:</span>
@@ -363,7 +355,6 @@ const JuicePOS = () => {
                         <span>Total</span>
                         <span>₱{calculateTotal().toFixed(2)}</span>
                     </div>
-
                     <button
                         className="w-full bg-green-600 text-white font-bold py-3 rounded-lg mt-4 hover:bg-green-700 transition-colors cursor-pointer"
                         onClick={handleConfirmOrder}
@@ -401,7 +392,6 @@ const JuicePOS = () => {
                                             ₱{item.price.toFixed(2)}
                                         </p>
                                     </div>
-
                                     <div className="flex items-center">
                                         <button
                                             className="bg-gray-200 px-2 rounded-l cursor-pointer"
@@ -419,7 +409,7 @@ const JuicePOS = () => {
                                             className="bg-gray-200 px-2 rounded-r cursor-pointer"
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                addToCart(item);
+                                                addToCart(item, e);
                                             }}
                                         >
                                             +
@@ -439,7 +429,6 @@ const JuicePOS = () => {
                             ))
                         )}
                     </div>
-
                     <div className="border-t pt-4">
                         <div className="flex justify-between items-center mb-2">
                             <span className="font-medium">Total Items:</span>
@@ -451,7 +440,6 @@ const JuicePOS = () => {
                             <span>Total</span>
                             <span>₱{calculateTotal().toFixed(2)}</span>
                         </div>
-
                         <button
                             className="w-full bg-green-600 text-white font-bold py-3 rounded-lg mt-4 hover:bg-green-700 transition-colors cursor-pointer"
                             onClick={handleConfirmOrder}
@@ -481,7 +469,6 @@ const JuicePOS = () => {
                         <p className="mb-4">
                             Are you sure you want to confirm this order?
                         </p>
-
                         <div className="max-h-60 overflow-y-auto border rounded p-2 mb-4">
                             {cart.map((item) => (
                                 <div
@@ -504,7 +491,6 @@ const JuicePOS = () => {
                                 <span>₱{calculateTotal().toFixed(2)}</span>
                             </div>
                         </div>
-
                         <div className="flex space-x-3">
                             <button
                                 className="w-1/2 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400 transition-colors cursor-pointer"
@@ -551,14 +537,10 @@ const JuicePOS = () => {
                             {/* Receipt Header */}
                             <div className="text-center mb-4">
                                 <h2 className="font-bold text-lg">
-                                    FRESH JUICE SHOP
+                                    Evergreen Juice Booth
                                 </h2>
-                                <p>123 Refreshment Ave.</p>
-                                <p>Juiceville, Metro Manila</p>
-                                <p>Tel: 123-456-7890</p>
-                                <p className="text-xs mt-2">
-                                    VAT Reg TIN: 123-456-789-000
-                                </p>
+                                <p>Bigte, Norzagaray, Bulacan</p>
+                                <p>Tel: 09612863209</p>
                                 <div className="border-t border-b border-dashed my-2 py-1">
                                     <p>
                                         Order #:{" "}
@@ -566,7 +548,6 @@ const JuicePOS = () => {
                                     </p>
                                     <p>Date: {currentDate}</p>
                                     <p>Time: {currentTime}</p>
-                                    <p>Cashier: ADMIN</p>
                                 </div>
                             </div>
 
