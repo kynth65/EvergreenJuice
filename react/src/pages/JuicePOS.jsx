@@ -9,6 +9,16 @@ import {
     Printer,
 } from "lucide-react";
 
+import calamansi from "../assets/calamansi-juice.png";
+import mango from "../assets/mango-juice.png";
+import coconut from "../assets/coconut-juice.png";
+import banana from "../assets/banana-juice.png";
+import lemon from "../assets/lemon-juice.png";
+import sweet_potato from "../assets/sweet-potato-juice.png";
+// You may need to provide images for these if they're not included
+import papaya from "../assets/calamansi-juice.png";
+import cucumber from "../assets/calamansi-juice.png";
+
 const JuicePOS = () => {
     const [searchTerm, setSearchTerm] = useState("");
     const [cart, setCart] = useState([]);
@@ -20,14 +30,19 @@ const JuicePOS = () => {
     const [currentTime, setCurrentTime] = useState("");
 
     const menuItems = [
-        { id: "CJ1", name: "Calamansi Juice", price: 45 },
-        { id: "CN1", name: "Coconut Juice", price: 55 },
-        { id: "PJ1", name: "Papaya Juice", price: 50 },
-        { id: "LJ1", name: "Lemon Juice", price: 45 },
-        { id: "CU1", name: "Cucumber Juice", price: 45 },
-        { id: "MS1", name: "Mango Shake", price: 65 },
-        { id: "BS1", name: "Banana Shake", price: 60 },
-        { id: "SP1", name: "Sweet Potato Milk Tea", price: 75 },
+        { id: "CJ1", name: "Calamansi Juice", price: 45, image: calamansi },
+        { id: "CN1", name: "Coconut Juice", price: 55, image: coconut },
+        { id: "PJ1", name: "Papaya Juice", price: 50, image: papaya },
+        { id: "LJ1", name: "Lemon Juice", price: 45, image: lemon },
+        { id: "CU1", name: "Cucumber Juice", price: 45, image: cucumber },
+        { id: "MS1", name: "Mango Shake", price: 65, image: mango },
+        { id: "BS1", name: "Banana Shake", price: 60, image: banana },
+        {
+            id: "SP1",
+            name: "Sweet Potato Milk Tea",
+            price: 75,
+            image: sweet_potato,
+        },
     ];
 
     // Set current date and time when component loads
@@ -186,15 +201,24 @@ const JuicePOS = () => {
                     {filteredItems.map((item) => (
                         <div
                             key={item.id}
-                            className="bg-gray-50 rounded-lg p-4 cursor-pointer hover:bg-green-50 transition-all border border-green-100"
+                            className="bg-gray-50 rounded-lg p-4 cursor-pointer hover:bg-green-50 transition-all border border-green-100 flex flex-col items-center"
                             onClick={() => addToCart(item)}
                         >
-                            <div className="flex justify-between items-start">
+                            <div className="flex justify-between items-start w-full">
                                 <span className="bg-green-500 text-white text-xs font-semibold px-2 py-1 rounded">
                                     {item.id}
                                 </span>
                             </div>
-                            <h3 className="font-semibold mt-2">{item.name}</h3>
+                            <div className="h-24 w-24 my-2 flex items-center justify-center">
+                                <img
+                                    src={item.image}
+                                    alt={item.name}
+                                    className="max-h-full max-w-full object-contain"
+                                />
+                            </div>
+                            <h3 className="font-semibold mt-2 text-center">
+                                {item.name}
+                            </h3>
                             <p className="text-gray-700">
                                 ₱{item.price.toFixed(2)}
                             </p>
