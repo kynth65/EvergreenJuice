@@ -1,6 +1,7 @@
 // JuicePOS.jsx
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 import {
     Search,
     ShoppingCart,
@@ -11,11 +12,14 @@ import {
     Printer,
     BookOpen,
 } from "lucide-react";
-import { menuItems } from "../data/recipeData";
+
+// Base API URL - change this to match your Laravel backend URL
+const API_URL = "http://localhost:8000/api";
 
 const JuicePOS = () => {
     const navigate = useNavigate();
     const [searchTerm, setSearchTerm] = useState("");
+    const [menuItems, setMenuItems] = useState([]);
     const [cart, setCart] = useState([]);
     const [isCartVisible, setIsCartVisible] = useState(false);
     const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -23,11 +27,37 @@ const JuicePOS = () => {
     const [orderNumber, setOrderNumber] = useState(1);
     const [currentDate, setCurrentDate] = useState("");
     const [currentTime, setCurrentTime] = useState("");
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState(null);
 
     // Navigate to instructions page
     const goToInstructions = () => {
         navigate("/instructions");
     };
+
+    // Navigate to products page
+    const goToProducts = () => {
+        navigate("/products");
+    };
+
+    // Fetch products directly from API
+    useEffect(() => {
+        const fetchProducts = async () => {
+            try {
+                setIsLoading(true);
+                const response = await axios.get(`${API_URL}/products`);
+                setMenuItems(response.data);
+                setError(null);
+            } catch (err) {
+                console.error("Error fetching products:", err);
+                setError("Failed to load products. Please try again.");
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchProducts();
+    }, []);
 
     // Set current date and time when component loads
     useEffect(() => {
@@ -120,9 +150,50 @@ const JuicePOS = () => {
     };
 
     // Finalize order and show receipt
-    const finalizeOrder = () => {
-        setShowConfirmModal(false);
-        setShowReceipt(true);
+    const finalizeOrder = async () => {
+        try {
+            setShowConfirmModal(false);
+
+            // Try to submit order to API
+            try {
+                // Prepare order data for the API
+                const orderData = {
+                    order: {
+                        totalAmount: calculateTotal(),
+                        paymentMethod: "Cash",
+                        paymentAmount: calculateTotal(), // For simplicity, exact payment
+                        changeAmount: 0,
+                    },
+                    items: cart.map((item) => ({
+                        id: item.id,
+                        quantity: item.quantity,
+                        price: item.price,
+                    })),
+                };
+
+                // Submit order to API
+                const response = await axios.post(
+                    `${API_URL}/orders`,
+                    orderData
+                );
+
+                // Set the order number from the API response if available
+                if (response.data && response.data.order_number) {
+                    setOrderNumber(response.data.order_number);
+                }
+            } catch (err) {
+                console.error(
+                    "API order submission failed, using local handling",
+                    err
+                );
+                // Fallback to original behavior if API fails
+            }
+
+            // Show receipt regardless of API success/failure
+            setShowReceipt(true);
+        } catch (err) {
+            console.error("Error finalizing order:", err);
+        }
     };
 
     // Reset after order
@@ -164,14 +235,55 @@ const JuicePOS = () => {
         return () => window.removeEventListener("resize", handleResize);
     }, []);
 
+    // Loading state
+    if (isLoading && menuItems.length === 0) {
+        return (
+            <div className="flex items-center justify-center h-screen bg-gray-100">
+                <div className="text-center">
+                    <div className="w-16 h-16 border-4 border-t-green-500 border-gray-200 rounded-full animate-spin mx-auto mb-4"></div>
+                    <p className="text-gray-600">Loading menu items...</p>
+                </div>
+            </div>
+        );
+    }
+
+    // Error state
+    if (error && menuItems.length === 0) {
+        return (
+            <div className="flex items-center justify-center h-screen bg-gray-100">
+                <div className="text-center max-w-md p-6 bg-white rounded-lg shadow-md">
+                    <div className="text-red-500 text-5xl mb-4">⚠️</div>
+                    <h2 className="text-xl font-bold text-red-600 mb-2">
+                        Error Loading Data
+                    </h2>
+                    <p className="text-gray-600 mb-4">{error}</p>
+                    <button
+                        onClick={() => window.location.reload()}
+                        className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
+                    >
+                        Try Again
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="flex flex-col md:flex-row h-screen bg-gray-100 p-2 pb-16 md:pb-2">
             {/* Menu Section */}
             <div className="w-full md:w-2/3 bg-white rounded-lg shadow-md p-4 mb-4 md:mb-0 md:mr-4 overflow-y-auto">
                 <div className="flex items-center justify-between mb-4">
-                    <h1 className="text-2xl font-bold text-green-700">
-                        Juice Menu
-                    </h1>
+                    <div className="flex items-center">
+                        <h1 className="text-2xl font-bold text-green-700">
+                            Juice Menu
+                        </h1>
+                        <button
+                            onClick={goToProducts}
+                            className="ml-4 px-4 py-2 text-sm bg-green-100 text-green-700 rounded-lg hover:bg-green-200"
+                        >
+                            Manage Products
+                        </button>
+                    </div>
                     <button
                         onClick={goToInstructions}
                         className="flex items-center bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors cursor-pointer"
@@ -209,6 +321,11 @@ const JuicePOS = () => {
                                     src={item.image}
                                     alt={item.name}
                                     className="max-h-full max-w-full object-contain"
+                                    onError={(e) => {
+                                        e.target.onerror = null;
+                                        e.target.src =
+                                            "https://via.placeholder.com/150?text=No+Image";
+                                    }}
                                 />
                             </div>
                             <h3 className="font-semibold mt-2 text-center">
