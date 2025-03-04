@@ -31,8 +31,9 @@ class ProductController extends Controller
         
         // Filter by archived status
         if ($request->has('show_archived')) {
-            if ($request->show_archived) {
-                // If show_archived is true, show both archived and non-archived products
+            if ($request->boolean('show_archived')) {
+                // If show_archived is true, show ONLY archived products
+                $query->where('is_archived', true);
             } else {
                 // If show_archived is false, show only non-archived products
                 $query->where('is_archived', false);
@@ -42,7 +43,21 @@ class ProductController extends Controller
             $query->where('is_archived', false);
         }
         
+        // Add logging to debug
+        Log::info('Products query', [
+            'show_archived' => $request->boolean('show_archived'),
+            'filter_sql' => $query->toSql(),
+            'filter_bindings' => $query->getBindings()
+        ]);
+        
         $products = $query->orderBy('name')->get();
+        
+        // Log the results
+        Log::info('Products results', [
+            'count' => $products->count(),
+            'archived_count' => $products->where('is_archived', true)->count(),
+            'active_count' => $products->where('is_archived', false)->count()
+        ]);
         
         // Get base URL for image paths
         $baseUrl = url('/');

@@ -83,13 +83,30 @@ const ProductManagement = () => {
     const fetchProducts = async () => {
         try {
             setLoading(true);
+            console.log("Fetching products with showArchived =", showArchived);
+
             // Make sure parameter name matches what your backend expects
             const response = await axiosClient.get(`/products`, {
                 params: {
                     show_archived: showArchived,
                 },
             });
-            console.log("API Response:", response.data); // Debug response
+
+            console.log("API Response status:", response.status);
+            console.log("Products count:", response.data.length);
+            console.log("Sample product:", response.data[0]);
+
+            // Check if the filtering is working properly
+            const archivedCount = response.data.filter(
+                (p) => p.is_archived
+            ).length;
+            const activeCount = response.data.filter(
+                (p) => !p.is_archived
+            ).length;
+            console.log(
+                `Archived products: ${archivedCount}, Active products: ${activeCount}`
+            );
+
             setProducts(response.data);
             setError(null);
         } catch (err) {
@@ -283,14 +300,28 @@ const ProductManagement = () => {
     const handleArchiveProduct = async (productId) => {
         try {
             setLoading(true);
-            await axiosClient.put(`/products/${productId}/archive`);
+            console.log("Archiving product:", productId);
+
+            const response = await axiosClient.put(
+                `/products/${productId}/archive`
+            );
+            console.log("Archive response:", response.data);
 
             // Show success message
             setSuccessMessage("Product archived successfully!");
             setTimeout(() => setSuccessMessage(null), 3000);
 
-            // Refresh the product list
-            await fetchProducts();
+            if (showArchived) {
+                // If we're viewing archived products already, just refresh the list
+                await fetchProducts();
+            } else {
+                // If we're viewing active products, this product should disappear
+                // Remove it from the current list without refetching
+                setProducts((prevProducts) =>
+                    prevProducts.filter((product) => product.id !== productId)
+                );
+            }
+
             setError(null);
         } catch (err) {
             console.error("Error archiving product:", err);
