@@ -1,26 +1,54 @@
 // router.jsx
-import { createBrowserRouter } from "react-router-dom";
+import { createBrowserRouter, Navigate } from "react-router-dom";
 import JuicePOS from "./pages/JuicePOS";
 import RecipePage from "./pages/RecipePage";
 import InstructionsMenu from "./pages/InstructionsMenu";
 import ProductManagement from "./pages/ProductManagement";
+import GuestLayout from "./layout/GuestLayout";
+import UserLayout from "./layout/UserLayout";
+import Login from "./Login";
+import Signup from "./Signup";
 
 const router = createBrowserRouter([
     {
         path: "/",
-        element: <JuicePOS />,
+        element: <UserLayout />,
+        children: [
+            {
+                path: "/",
+                element: <Navigate to="/juice" />,
+            },
+            {
+                path: "/juice",
+                element: <JuicePOS />,
+            },
+            {
+                path: "/instructions",
+                element: <InstructionsMenu />,
+            },
+            {
+                path: "/recipe/:recipeId",
+                element: <RecipePage />,
+            },
+            {
+                path: "/products",
+                element: <ProductManagement />,
+            },
+        ],
     },
     {
-        path: "/instructions",
-        element: <InstructionsMenu />,
-    },
-    {
-        path: "/recipe/:recipeId",
-        element: <RecipePage />,
-    },
-    {
-        path: "/products",
-        element: <ProductManagement />,
+        path: "/",
+        element: <GuestLayout />,
+        children: [
+            {
+                path: "/login",
+                element: <Login />,
+            },
+            {
+                path: "/signup",
+                element: <Signup />,
+            },
+        ],
     },
 ]);
 

@@ -7,6 +7,31 @@ import { ArrowLeft, Plus, Trash2, Edit, Save, X } from "lucide-react";
 // Base API URL - change this to match your Laravel backend URL
 const API_URL = "http://localhost:8000/api";
 
+// Embedded base64 fallback image (light gray with "No Image" text)
+const noImageFallback =
+    "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNTAiIGhlaWdodD0iMTUwIiB2aWV3Qm94PSIwIDAgMTUwIDE1MCI+PHJlY3Qgd2lkdGg9IjE1MCIgaGVpZ2h0PSIxNTAiIGZpbGw9IiNmMGYwZjAiLz48dGV4dCB4PSI3NSIgeT0iNzUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzg4OCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSI+Tm8gSW1hZ2U8L3RleHQ+PHBhdGggZD0iTTQwLDExMCBMNjAsODAgTDgwLDkwIEwxMDAsNjAgTDEyMCwxMTAgWiIgZmlsbD0iI2RkZCIgc3Ryb2tlPSIjY2NjIiAvPjxjaXJjbGUgY3g9IjUwIiBjeT0iNTAiIHI9IjEwIiBmaWxsPSIjZGRkIiAvPjwvc3ZnPg==";
+
+// Function to get full URL for images or return fallback
+const getFullUrl = (imagePath) => {
+    if (!imagePath) return noImageFallback;
+
+    // If the path already starts with http, return it as is
+    if (imagePath.startsWith("http")) {
+        return imagePath;
+    }
+
+    // If path starts with /storage or storage, append to base URL
+    const baseUrl = "http://localhost:8000";
+    if (imagePath.startsWith("/storage/") || imagePath.startsWith("storage/")) {
+        return imagePath.startsWith("/")
+            ? `${baseUrl}${imagePath}`
+            : `${baseUrl}/${imagePath}`;
+    }
+
+    // For other paths, add /storage/ prefix
+    return `${baseUrl}/storage/${imagePath}`;
+};
+
 const ProductManagement = () => {
     const navigate = useNavigate();
     const [products, setProducts] = useState([]);
@@ -401,7 +426,11 @@ const ProductManagement = () => {
                                                     <img
                                                         src={
                                                             imagePreview ||
-                                                            newProduct.image_path
+                                                            (newProduct.image_path
+                                                                ? getFullUrl(
+                                                                      newProduct.image_path
+                                                                  )
+                                                                : noImageFallback)
                                                         }
                                                         alt="Preview"
                                                         className="max-h-full max-w-full object-contain"
@@ -409,7 +438,7 @@ const ProductManagement = () => {
                                                             e.target.onerror =
                                                                 null;
                                                             e.target.src =
-                                                                "https://via.placeholder.com/150?text=No+Image";
+                                                                noImageFallback;
                                                         }}
                                                     />
                                                 </div>
@@ -485,14 +514,16 @@ const ProductManagement = () => {
                                             <td className="border px-4 py-2">
                                                 <div className="h-16 w-16 flex items-center justify-center">
                                                     <img
-                                                        src={product.image}
+                                                        src={getFullUrl(
+                                                            product.image
+                                                        )}
                                                         alt={product.name}
                                                         className="max-h-full max-w-full object-contain"
                                                         onError={(e) => {
                                                             e.target.onerror =
                                                                 null;
                                                             e.target.src =
-                                                                "https://via.placeholder.com/150?text=No+Image";
+                                                                noImageFallback;
                                                         }}
                                                     />
                                                 </div>

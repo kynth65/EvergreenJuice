@@ -1,7 +1,7 @@
 // JuicePOS.jsx
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import axiosClient from "../axios.client";
 import {
     Search,
     ShoppingCart,
@@ -13,8 +13,12 @@ import {
     BookOpen,
 } from "lucide-react";
 
-// Base API URL - change this to match your Laravel backend URL
-const API_URL = "http://localhost:8000/api";
+// Base API URL for constructing image URLs
+const baseUrl = "http://localhost:8000";
+
+// Fallback image as base64 string for when images fail to load
+const noImageFallback =
+    "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNTAiIGhlaWdodD0iMTUwIiB2aWV3Qm94PSIwIDAgMTUwIDE1MCI+PHJlY3Qgd2lkdGg9IjE1MCIgaGVpZ2h0PSIxNTAiIGZpbGw9IiNmMGYwZjAiLz48dGV4dCB4PSI3NSIgeT0iNzUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzg4OCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSI+Tm8gSW1hZ2U8L3RleHQ+PHBhdGggZD0iTTQwLDExMCBMNjAsODAgTDgwLDkwIEwxMDAsNjAgTDEyMCwxMTAgWiIgZmlsbD0iI2RkZCIgc3Ryb2tlPSIjY2NjIiAvPjxjaXJjbGUgY3g9IjUwIiBjeT0iNTAiIHI9IjEwIiBmaWxsPSIjZGRkIiAvPjwvc3ZnPg==";
 
 const JuicePOS = () => {
     const navigate = useNavigate();
@@ -29,6 +33,32 @@ const JuicePOS = () => {
     const [currentTime, setCurrentTime] = useState("");
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
+
+    // Function to get full URL for images
+    const getFullUrl = (filePath) => {
+        if (!filePath) return noImageFallback;
+
+        // If the path already starts with http, return it as is
+        if (filePath.startsWith("http")) {
+            return filePath;
+        }
+
+        // Log the image path for debugging
+        console.log("Processing image path:", filePath);
+
+        // If path starts with /storage or storage, append to base URL
+        if (
+            filePath.startsWith("/storage/") ||
+            filePath.startsWith("storage/")
+        ) {
+            return filePath.startsWith("/")
+                ? `${baseUrl}${filePath}`
+                : `${baseUrl}/${filePath}`;
+        }
+
+        // For other paths, add /storage/ prefix
+        return `${baseUrl}/storage/${filePath}`;
+    };
 
     // Navigate to instructions page
     const goToInstructions = () => {
@@ -45,7 +75,12 @@ const JuicePOS = () => {
         const fetchProducts = async () => {
             try {
                 setIsLoading(true);
-                const response = await axios.get(`${API_URL}/products`);
+                // Use axiosClient instead of axios
+                const response = await axiosClient.get("/products");
+
+                // Log the response to check image paths
+                console.log("Products received:", response.data);
+
                 setMenuItems(response.data);
                 setError(null);
             } catch (err) {
@@ -171,11 +206,8 @@ const JuicePOS = () => {
                     })),
                 };
 
-                // Submit order to API
-                const response = await axios.post(
-                    `${API_URL}/orders`,
-                    orderData
-                );
+                // Submit order to API using axiosClient
+                const response = await axiosClient.post("/orders", orderData);
 
                 // Set the order number from the API response if available
                 if (response.data && response.data.order_number) {
@@ -318,13 +350,16 @@ const JuicePOS = () => {
                             </div>
                             <div className="h-24 w-24 my-2 flex items-center justify-center">
                                 <img
-                                    src={item.image}
+                                    src={getFullUrl(item.image)}
                                     alt={item.name}
                                     className="max-h-full max-w-full object-contain"
                                     onError={(e) => {
-                                        e.target.onerror = null;
-                                        e.target.src =
-                                            "https://via.placeholder.com/150?text=No+Image";
+                                        console.log(
+                                            `Image error for ${item.name}:`,
+                                            item.image
+                                        );
+                                        e.target.onerror = null; // Prevent infinite error loop
+                                        e.target.src = noImageFallback;
                                     }}
                                 />
                             </div>

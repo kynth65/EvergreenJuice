@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\API;
+namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
@@ -11,6 +11,7 @@ use App\Models\RecipeStep;
 use App\Models\RecipeTip;
 use App\Models\NutritionFact;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 
 class ProductController extends Controller
 {
@@ -27,12 +28,34 @@ class ProductController extends Controller
         
         $products = $query->orderBy('name')->get();
         
-        return response()->json($products->map(function($product) {
+        // Get base URL for image paths
+        $baseUrl = url('/');
+        
+        return response()->json($products->map(function($product) use ($baseUrl) {
+            // Format image URL properly
+            $imagePath = $product->image_path;
+            
+            // Make sure image path is properly formatted
+            if ($imagePath && !str_starts_with($imagePath, 'http')) {
+                // For paths already starting with /storage
+                if (str_starts_with($imagePath, '/storage/')) {
+                    $imagePath = $baseUrl . $imagePath;
+                } 
+                // For paths like 'storage/products/...'
+                else if (str_starts_with($imagePath, 'storage/')) {
+                    $imagePath = $baseUrl . '/' . $imagePath;
+                }
+                // For paths without storage prefix
+                else {
+                    $imagePath = $baseUrl . '/storage/' . ltrim($imagePath, '/');
+                }
+            }
+            
             return [
                 'id' => $product->id,
                 'name' => $product->name,
                 'price' => (float) $product->price,
-                'image' => $product->image_path,
+                'image' => $imagePath,
                 'type' => $product->type,
                 'path' => "/recipe/{$product->id}"
             ];
@@ -86,11 +109,31 @@ class ProductController extends Controller
             return response()->json(['error' => 'Product not found'], 404);
         }
         
+        // Format image URL properly
+        $baseUrl = url('/');
+        $imagePath = $product->image_path;
+        
+        // Make sure image path is properly formatted
+        if ($imagePath && !str_starts_with($imagePath, 'http')) {
+            // For paths already starting with /storage
+            if (str_starts_with($imagePath, '/storage/')) {
+                $imagePath = $baseUrl . $imagePath;
+            } 
+            // For paths like 'storage/products/...'
+            else if (str_starts_with($imagePath, 'storage/')) {
+                $imagePath = $baseUrl . '/' . $imagePath;
+            }
+            // For paths without storage prefix
+            else {
+                $imagePath = $baseUrl . '/storage/' . ltrim($imagePath, '/');
+            }
+        }
+        
         $result = [
             'id' => $product->id,
             'name' => $product->name,
             'price' => (float) $product->price,
-            'image' => $product->image_path,
+            'image' => $imagePath,
             'type' => $product->type
         ];
         
@@ -187,12 +230,21 @@ class ProductController extends Controller
             $file = $request->file('image');
             $filename = time() . '_' . $file->getClientOriginalName();
             
-            // Store the file in the public directory
-            $path = $file->storeAs('public/products', $filename);
+            // Store the file in the public/products directory
+            // Note: We're changing from 'public/products' to 'products' with 'public' disk
+            // This ensures proper path generation
+            $path = $file->storeAs('products', $filename, 'public');
+            
+            // Log the image path for debugging
+            Log::info('Image uploaded', [
+                'filename' => $filename,
+                'path' => $path,
+                'url' => Storage::url($path)
+            ]);
             
             // Return the public URL
             return response()->json([
-                'image_path' => Storage::url($path)
+                'image_path' => 'storage/' . $path
             ]);
         }
         
