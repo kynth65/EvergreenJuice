@@ -1,8 +1,17 @@
-// src/pages/ProductManagement.jsx
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { ArrowLeft, Plus, Trash2, Edit, Save, X } from "lucide-react";
+import {
+    ArrowLeft,
+    Plus,
+    Trash2,
+    Edit,
+    Save,
+    X,
+    Archive,
+    RefreshCw,
+    Filter,
+} from "lucide-react";
 import axiosClient from "../axios.client";
 
 // Base API URL - change this to match your Laravel backend URL
@@ -38,8 +47,10 @@ const ProductManagement = () => {
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [successMessage, setSuccessMessage] = useState(null);
     const [showAddForm, setShowAddForm] = useState(false);
     const [editingProductId, setEditingProductId] = useState(null);
+    const [showArchived, setShowArchived] = useState(false);
 
     // New product form state
     const [newProduct, setNewProduct] = useState({
@@ -57,21 +68,28 @@ const ProductManagement = () => {
         price: "",
         image_path: "",
         type: "",
+        is_archived: false,
     });
 
     // File upload state
     const [selectedFile, setSelectedFile] = useState(null);
     const [imagePreview, setImagePreview] = useState("");
 
-    // Fetch products on component mount
+    // Fetch products on component mount or when showArchived changes
     useEffect(() => {
         fetchProducts();
-    }, []);
+    }, [showArchived]);
 
     const fetchProducts = async () => {
         try {
             setLoading(true);
-            const response = await axiosClient.get(`/products`);
+            // Make sure parameter name matches what your backend expects
+            const response = await axiosClient.get(`/products`, {
+                params: {
+                    show_archived: showArchived,
+                },
+            });
+            console.log("API Response:", response.data); // Debug response
             setProducts(response.data);
             setError(null);
         } catch (err) {
@@ -147,6 +165,7 @@ const ProductManagement = () => {
             price: product.price,
             image_path: product.image,
             type: product.type || "Juice",
+            is_archived: product.is_archived || false,
         });
     };
 
@@ -158,6 +177,7 @@ const ProductManagement = () => {
             price: "",
             image_path: "",
             type: "",
+            is_archived: false,
         });
     };
 
@@ -182,8 +202,8 @@ const ProductManagement = () => {
                 formData.append("image", selectedFile);
 
                 // Upload the image
-                const uploadResponse = await axios.post(
-                    `${API_URL}/upload-image`,
+                const uploadResponse = await axiosClient.post(
+                    `/upload-image`,
                     formData,
                     {
                         headers: {
@@ -202,7 +222,11 @@ const ProductManagement = () => {
             };
 
             // Call your API to create the product
-            await axios.post(`${API_URL}/products`, productData);
+            await axiosClient.post(`/products`, productData);
+
+            // Show success message
+            setSuccessMessage("Product added successfully!");
+            setTimeout(() => setSuccessMessage(null), 3000);
 
             // Refresh the product list
             await fetchProducts();
@@ -233,10 +257,14 @@ const ProductManagement = () => {
             }
 
             // Call your API to update the product
-            await axios.put(
-                `${API_URL}/products/${editedProduct.id}`,
+            await axiosClient.put(
+                `/products/${editedProduct.id}`,
                 editedProduct
             );
+
+            // Show success message
+            setSuccessMessage("Product updated successfully!");
+            setTimeout(() => setSuccessMessage(null), 3000);
 
             // Refresh the product list
             await fetchProducts();
@@ -252,6 +280,46 @@ const ProductManagement = () => {
         }
     };
 
+    const handleArchiveProduct = async (productId) => {
+        try {
+            setLoading(true);
+            await axiosClient.put(`/products/${productId}/archive`);
+
+            // Show success message
+            setSuccessMessage("Product archived successfully!");
+            setTimeout(() => setSuccessMessage(null), 3000);
+
+            // Refresh the product list
+            await fetchProducts();
+            setError(null);
+        } catch (err) {
+            console.error("Error archiving product:", err);
+            setError("Failed to archive product. Please try again.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleUnarchiveProduct = async (productId) => {
+        try {
+            setLoading(true);
+            await axiosClient.put(`/products/${productId}/unarchive`);
+
+            // Show success message
+            setSuccessMessage("Product unarchived successfully!");
+            setTimeout(() => setSuccessMessage(null), 3000);
+
+            // Refresh the product list
+            await fetchProducts();
+            setError(null);
+        } catch (err) {
+            console.error("Error unarchiving product:", err);
+            setError("Failed to unarchive product. Please try again.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleDeleteProduct = async (productId) => {
         if (!window.confirm("Are you sure you want to delete this product?")) {
             return;
@@ -259,11 +327,13 @@ const ProductManagement = () => {
         try {
             setLoading(true);
             // Call your API to delete the product
-            const response = await axiosClient.delete(
-                `${API_URL}/products/${productId}`
-            );
+            await axiosClient.delete(`/products/${productId}`);
 
-            // If successful, refresh the product list
+            // Show success message
+            setSuccessMessage("Product deleted successfully!");
+            setTimeout(() => setSuccessMessage(null), 3000);
+
+            // Refresh the product list
             await fetchProducts();
             setError(null);
         } catch (err) {
@@ -271,10 +341,21 @@ const ProductManagement = () => {
 
             // Handle foreign key constraint error
             if (err.response && err.response.data && err.response.data.error) {
-                setError(
-                    err.response.data.message ||
-                        "This product can't be deleted because it's being used in orders."
-                );
+                if (err.response.data.suggestion === "archive") {
+                    if (
+                        window.confirm(
+                            err.response.data.message +
+                                "\n\nWould you like to archive it instead?"
+                        )
+                    ) {
+                        handleArchiveProduct(productId);
+                    }
+                } else {
+                    setError(
+                        err.response.data.message ||
+                            "This product can't be deleted because it's being used in orders."
+                    );
+                }
             } else {
                 setError("Failed to delete product. Please try again.");
             }
@@ -282,6 +363,11 @@ const ProductManagement = () => {
             setLoading(false);
         }
     };
+
+    const toggleShowArchived = () => {
+        setShowArchived(!showArchived);
+    };
+
     // Loading state
     if (loading && products.length === 0) {
         return (
@@ -310,23 +396,66 @@ const ProductManagement = () => {
                             Product Management
                         </h1>
                     </div>
-                    <button
-                        onClick={toggleAddForm}
-                        className="flex items-center bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors cursor-pointer"
-                    >
-                        {showAddForm ? (
-                            <X size={18} className="mr-2" />
-                        ) : (
-                            <Plus size={18} className="mr-2" />
-                        )}
-                        <span>{showAddForm ? "Cancel" : "Add Product"}</span>
-                    </button>
+                    <div className="flex space-x-2">
+                        <button
+                            onClick={toggleShowArchived}
+                            className={`flex items-center px-4 py-2 rounded-lg transition-colors cursor-pointer border ${
+                                showArchived
+                                    ? "bg-blue-500 text-white hover:bg-blue-600"
+                                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                            }`}
+                            title={
+                                showArchived
+                                    ? "Hide archived products"
+                                    : "Show archived products"
+                            }
+                        >
+                            <Filter size={18} className="mr-2" />
+                            <span>
+                                {showArchived
+                                    ? "Hide Archived"
+                                    : "Show Archived"}
+                            </span>
+                        </button>
+                        <button
+                            onClick={toggleAddForm}
+                            className="flex items-center bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors cursor-pointer"
+                        >
+                            {showAddForm ? (
+                                <X size={18} className="mr-2" />
+                            ) : (
+                                <Plus size={18} className="mr-2" />
+                            )}
+                            <span>
+                                {showAddForm ? "Cancel" : "Add Product"}
+                            </span>
+                        </button>
+                    </div>
                 </div>
+
+                {/* Success Message */}
+                {successMessage && (
+                    <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-6 flex justify-between items-center">
+                        <p>{successMessage}</p>
+                        <button
+                            onClick={() => setSuccessMessage(null)}
+                            className="text-green-700 hover:text-green-900"
+                        >
+                            <X size={18} />
+                        </button>
+                    </div>
+                )}
 
                 {/* Error Message */}
                 {error && (
-                    <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
+                    <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6 flex justify-between items-center">
                         <p>{error}</p>
+                        <button
+                            onClick={() => setError(null)}
+                            className="text-red-700 hover:text-red-900"
+                        >
+                            <X size={18} />
+                        </button>
                     </div>
                 )}
 
@@ -479,12 +608,14 @@ const ProductManagement = () => {
                 {/* Products List */}
                 <div className="bg-white rounded-lg shadow-md p-6">
                     <h2 className="text-xl font-bold text-green-700 mb-6">
-                        Products List
+                        {showArchived ? "Archived Products" : "Active Products"}
                     </h2>
 
                     {products.length === 0 ? (
                         <p className="text-gray-500 text-center py-8">
-                            No products found.
+                            {showArchived
+                                ? "No archived products found."
+                                : "No products found."}
                         </p>
                     ) : (
                         <div className="overflow-x-auto">
@@ -515,7 +646,11 @@ const ProductManagement = () => {
                                     {products.map((product) => (
                                         <tr
                                             key={product.id}
-                                            className="hover:bg-gray-50"
+                                            className={`hover:bg-gray-50 ${
+                                                product.is_archived
+                                                    ? "bg-gray-100"
+                                                    : ""
+                                            }`}
                                         >
                                             <td className="border px-4 py-2">
                                                 {product.id}
@@ -616,6 +751,11 @@ const ProductManagement = () => {
                                                 <>
                                                     <td className="border px-4 py-2">
                                                         {product.name}
+                                                        {product.is_archived && (
+                                                            <span className="ml-2 inline-block px-2 py-1 text-xs bg-gray-200 text-gray-700 rounded">
+                                                                Archived
+                                                            </span>
+                                                        )}
                                                     </td>
                                                     <td className="border px-4 py-2">
                                                         ₱
@@ -628,28 +768,73 @@ const ProductManagement = () => {
                                                             "Juice"}
                                                     </td>
                                                     <td className="border px-4 py-2 text-center">
-                                                        <button
-                                                            onClick={() =>
-                                                                startEditing(
-                                                                    product
-                                                                )
-                                                            }
-                                                            className="p-1 bg-blue-100 text-blue-600 rounded mr-1 hover:bg-blue-200 transition-colors"
-                                                            title="Edit"
-                                                        >
-                                                            <Edit size={18} />
-                                                        </button>
-                                                        <button
-                                                            onClick={() =>
-                                                                handleDeleteProduct(
-                                                                    product.id
-                                                                )
-                                                            }
-                                                            className="p-1 bg-red-100 text-red-600 rounded hover:bg-red-200 transition-colors"
-                                                            title="Delete"
-                                                        >
-                                                            <Trash2 size={18} />
-                                                        </button>
+                                                        {!product.is_archived ? (
+                                                            <>
+                                                                <button
+                                                                    onClick={() =>
+                                                                        startEditing(
+                                                                            product
+                                                                        )
+                                                                    }
+                                                                    className="p-1 bg-blue-100 text-blue-600 rounded mr-1 hover:bg-blue-200 transition-colors"
+                                                                    title="Edit"
+                                                                >
+                                                                    <Edit
+                                                                        size={
+                                                                            18
+                                                                        }
+                                                                    />
+                                                                </button>
+                                                                <button
+                                                                    onClick={() =>
+                                                                        handleArchiveProduct(
+                                                                            product.id
+                                                                        )
+                                                                    }
+                                                                    className="p-1 bg-yellow-100 text-yellow-600 rounded mr-1 hover:bg-yellow-200 transition-colors"
+                                                                    title="Archive"
+                                                                >
+                                                                    <Archive
+                                                                        size={
+                                                                            18
+                                                                        }
+                                                                    />
+                                                                </button>
+                                                                <button
+                                                                    onClick={() =>
+                                                                        handleDeleteProduct(
+                                                                            product.id
+                                                                        )
+                                                                    }
+                                                                    className="p-1 bg-red-100 text-red-600 rounded hover:bg-red-200 transition-colors"
+                                                                    title="Delete"
+                                                                >
+                                                                    <Trash2
+                                                                        size={
+                                                                            18
+                                                                        }
+                                                                    />
+                                                                </button>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <button
+                                                                    onClick={() =>
+                                                                        handleUnarchiveProduct(
+                                                                            product.id
+                                                                        )
+                                                                    }
+                                                                    className="p-1 bg-green-100 text-green-600 rounded hover:bg-green-200 transition-colors"
+                                                                    title="Unarchive"
+                                                                >
+                                                                    <RefreshCw
+                                                                        size={
+                                                                            18
+                                                                        }
+                                                                    />
+                                                                </button>
+                                                            </>
+                                                        )}
                                                     </td>
                                                 </>
                                             )}

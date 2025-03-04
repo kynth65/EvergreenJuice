@@ -5,8 +5,6 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\OrderController;
 
-
-
 // User authentication route
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -19,6 +17,8 @@ Route::get('/products/{id}', [ProductController::class, 'show']);
 Route::put('/products/{id}', [ProductController::class, 'update']);
 Route::delete('/products/{id}', [ProductController::class, 'destroy']);
 Route::post('/upload-image', [ProductController::class, 'uploadImage']);
+Route::put('/products/{id}/archive', [ProductController::class, 'archive']);
+Route::put('/products/{id}/unarchive', [ProductController::class, 'unarchive']);
 
 // Order routes
 Route::post('/orders', [OrderController::class, 'store']);

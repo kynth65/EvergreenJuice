@@ -13,18 +13,33 @@ use App\Models\NutritionFact;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use Exception;
 
 class ProductController extends Controller
 {
     /**
-     * Get all products with optional type filter
+     * Get all products with optional type filter and archived status
      */
     public function index(Request $request)
     {
         $query = Product::query();
         
+        // Filter by type if specified
         if ($request->has('type')) {
             $query->where('type', $request->type);
+        }
+        
+        // Filter by archived status
+        if ($request->has('show_archived')) {
+            if ($request->show_archived) {
+                // If show_archived is true, show both archived and non-archived products
+            } else {
+                // If show_archived is false, show only non-archived products
+                $query->where('is_archived', false);
+            }
+        } else {
+            // By default, show only non-archived products
+            $query->where('is_archived', false);
         }
         
         $products = $query->orderBy('name')->get();
@@ -58,6 +73,7 @@ class ProductController extends Controller
                 'price' => (float) $product->price,
                 'image' => $imagePath,
                 'type' => $product->type,
+                'is_archived' => (bool) $product->is_archived,
                 'path' => "/recipe/{$product->id}"
             ];
         }));
@@ -81,7 +97,8 @@ class ProductController extends Controller
             'name' => $request->name,
             'price' => $request->price,
             'image_path' => $request->image_path,
-            'type' => $request->type
+            'type' => $request->type,
+            'is_archived' => false
         ]);
         
         return response()->json([
@@ -90,6 +107,7 @@ class ProductController extends Controller
             'price' => (float) $product->price,
             'image' => $product->image_path,
             'type' => $product->type,
+            'is_archived' => (bool) $product->is_archived,
             'path' => "/recipe/{$product->id}"
         ], 201);
     }
@@ -135,7 +153,8 @@ class ProductController extends Controller
             'name' => $product->name,
             'price' => (float) $product->price,
             'image' => $imagePath,
-            'type' => $product->type
+            'type' => $product->type,
+            'is_archived' => (bool) $product->is_archived
         ];
         
         if ($product->recipe) {
@@ -173,14 +192,16 @@ class ProductController extends Controller
             'name' => 'required|string|max:100',
             'price' => 'required|numeric|min:0',
             'image_path' => 'nullable|string',
-            'type' => 'nullable|string|max:50'
+            'type' => 'nullable|string|max:50',
+            'is_archived' => 'nullable|boolean'
         ]);
         
         $product->update([
             'name' => $request->name,
             'price' => $request->price,
-            'image_path' => $request->image_path,
-            'type' => $request->type
+            'image_path' => $request->image_path ?? $product->image_path,
+            'type' => $request->type,
+            'is_archived' => $request->has('is_archived') ? $request->is_archived : $product->is_archived
         ]);
         
         return response()->json([
@@ -189,7 +210,56 @@ class ProductController extends Controller
             'price' => (float) $product->price,
             'image' => $product->image_path,
             'type' => $product->type,
+            'is_archived' => (bool) $product->is_archived,
             'path' => "/recipe/{$product->id}"
+        ]);
+    }
+    
+    /**
+     * Archive a product instead of deleting
+     */
+    public function archive($id)
+    {
+        $product = Product::find($id);
+        
+        if (!$product) {
+            return response()->json(['error' => 'Product not found'], 404);
+        }
+        
+        // Try this instead of update()
+        $product->is_archived = true;
+        $product->save();
+        
+        // Or alternatively, ensure your update method works correctly
+        // $product->update(['is_archived' => true]);
+        
+        // Log for debugging
+        Log::info('Product archived: ' . $id . ' - New status: ' . $product->is_archived);
+        
+        return response()->json([
+            'message' => 'Product archived successfully',
+            'id' => $product->id,
+            'is_archived' => true
+        ]);
+    }
+    
+    /**
+     * Unarchive a product
+     */
+    public function unarchive($id)
+    {
+        $product = Product::find($id);
+        
+        if (!$product) {
+            return response()->json(['error' => 'Product not found'], 404);
+        }
+        
+        $product->update(['is_archived' => false]);
+        
+        return response()->json([
+            'message' => 'Product unarchived successfully',
+            'id' => $product->id,
+            'is_archived' => false
         ]);
     }
     
@@ -212,18 +282,13 @@ class ProductController extends Controller
             $orderItemsCount = DB::table('order_items')->where('product_id', $id)->count();
             
             if ($orderItemsCount > 0) {
-                // Option 1: Return error and don't delete
+                // Instead of deletion, we'll suggest archiving the product
                 return response()->json([
                     'error' => 'Cannot delete product because it is referenced in orders',
                     'orderCount' => $orderItemsCount,
-                    'message' => 'This product is used in ' . $orderItemsCount . ' order(s). Please archive the product instead of deleting it.'
+                    'message' => "This product is used in {$orderItemsCount} order(s). Please archive the product instead of deleting it.",
+                    'suggestion' => 'archive'
                 ], 422);
-                
-                /* 
-                // Option 2: If you prefer to automatically delete associated order items
-                // (Uncomment this section if you want to automatically delete related order items)
-                DB::table('order_items')->where('product_id', $id)->delete();
-                */
             }
             
             // Delete related recipe data if exists
@@ -244,7 +309,7 @@ class ProductController extends Controller
             
         } catch (Exception $e) {
             // Rollback the transaction if anything goes wrong
-            DB::rollback();
+            DB::rollBack();
             
             // Log the error
             Log::error('Error deleting product: ' . $e->getMessage());
