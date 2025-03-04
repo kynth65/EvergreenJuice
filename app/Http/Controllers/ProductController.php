@@ -12,6 +12,7 @@ use App\Models\RecipeTip;
 use App\Models\NutritionFact;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
 class ProductController extends Controller
 {
@@ -203,18 +204,56 @@ class ProductController extends Controller
             return response()->json(['error' => 'Product not found'], 404);
         }
         
-        // Delete related recipe data if exists
-        if ($product->recipe) {
-            $product->recipe->ingredients()->delete();
-            $product->recipe->steps()->delete();
-            $product->recipe->tips()->delete();
-            $product->recipe->nutritionFacts()->delete();
-            $product->recipe->delete();
+        try {
+            // Start a database transaction
+            DB::beginTransaction();
+            
+            // First, check if there are order items using this product
+            $orderItemsCount = DB::table('order_items')->where('product_id', $id)->count();
+            
+            if ($orderItemsCount > 0) {
+                // Option 1: Return error and don't delete
+                return response()->json([
+                    'error' => 'Cannot delete product because it is referenced in orders',
+                    'orderCount' => $orderItemsCount,
+                    'message' => 'This product is used in ' . $orderItemsCount . ' order(s). Please archive the product instead of deleting it.'
+                ], 422);
+                
+                /* 
+                // Option 2: If you prefer to automatically delete associated order items
+                // (Uncomment this section if you want to automatically delete related order items)
+                DB::table('order_items')->where('product_id', $id)->delete();
+                */
+            }
+            
+            // Delete related recipe data if exists
+            if ($product->recipe) {
+                $product->recipe->ingredients()->delete();
+                $product->recipe->steps()->delete();
+                $product->recipe->tips()->delete();
+                $product->recipe->nutritionFacts()->delete();
+                $product->recipe->delete();
+            }
+            
+            $product->delete();
+            
+            // Commit the transaction
+            DB::commit();
+            
+            return response()->json(['message' => 'Product deleted successfully']);
+            
+        } catch (Exception $e) {
+            // Rollback the transaction if anything goes wrong
+            DB::rollback();
+            
+            // Log the error
+            Log::error('Error deleting product: ' . $e->getMessage());
+            
+            return response()->json([
+                'error' => 'Failed to delete product',
+                'message' => $e->getMessage()
+            ], 500);
         }
-        
-        $product->delete();
-        
-        return response()->json(['message' => 'Product deleted successfully']);
     }
     
     /**

@@ -11,6 +11,7 @@ import {
     X,
     Printer,
     BookOpen,
+    BarChart3,
 } from "lucide-react";
 
 // Base API URL for constructing image URLs
@@ -316,13 +317,22 @@ const JuicePOS = () => {
                             Manage Products
                         </button>
                     </div>
-                    <button
-                        onClick={goToInstructions}
-                        className="flex items-center bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors cursor-pointer"
-                    >
-                        <BookOpen size={18} className="mr-2" />
-                        <span>Instructions</span>
-                    </button>
+                    <div className="flex space-x-2">
+                        <button
+                            onClick={() => navigate("/sales")}
+                            className="flex items-center bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors cursor-pointer"
+                        >
+                            <BarChart3 size={18} className="mr-2" />
+                            <span>Sales Report</span>
+                        </button>
+                        <button
+                            onClick={goToInstructions}
+                            className="flex items-center bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors cursor-pointer"
+                        >
+                            <BookOpen size={18} className="mr-2" />
+                            <span>Instructions</span>
+                        </button>
+                    </div>
                 </div>
 
                 <div className="flex items-center bg-gray-100 rounded-md p-2 mb-4">

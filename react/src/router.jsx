@@ -1,9 +1,9 @@
-// router.jsx
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import JuicePOS from "./pages/JuicePOS";
 import RecipePage from "./pages/RecipePage";
 import InstructionsMenu from "./pages/InstructionsMenu";
 import ProductManagement from "./pages/ProductManagement";
+import Sales from "./pages/Sales";
 import GuestLayout from "./layout/GuestLayout";
 import UserLayout from "./layout/UserLayout";
 import Login from "./Login";
@@ -33,6 +33,10 @@ const router = createBrowserRouter([
             {
                 path: "/products",
                 element: <ProductManagement />,
+            },
+            {
+                path: "/sales",
+                element: <Sales />,
             },
         ],
     },

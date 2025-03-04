@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { ArrowLeft, Plus, Trash2, Edit, Save, X } from "lucide-react";
+import axiosClient from "../axios.client";
 
 // Base API URL - change this to match your Laravel backend URL
 const API_URL = "http://localhost:8000/api";
@@ -70,7 +71,7 @@ const ProductManagement = () => {
     const fetchProducts = async () => {
         try {
             setLoading(true);
-            const response = await axios.get(`${API_URL}/products`);
+            const response = await axiosClient.get(`/products`);
             setProducts(response.data);
             setError(null);
         } catch (err) {
@@ -255,24 +256,32 @@ const ProductManagement = () => {
         if (!window.confirm("Are you sure you want to delete this product?")) {
             return;
         }
-
         try {
             setLoading(true);
-
             // Call your API to delete the product
-            await axios.delete(`${API_URL}/products/${productId}`);
+            const response = await axiosClient.delete(
+                `${API_URL}/products/${productId}`
+            );
 
-            // Refresh the product list
+            // If successful, refresh the product list
             await fetchProducts();
             setError(null);
         } catch (err) {
             console.error("Error deleting product:", err);
-            setError("Failed to delete product. Please try again.");
+
+            // Handle foreign key constraint error
+            if (err.response && err.response.data && err.response.data.error) {
+                setError(
+                    err.response.data.message ||
+                        "This product can't be deleted because it's being used in orders."
+                );
+            } else {
+                setError("Failed to delete product. Please try again.");
+            }
         } finally {
             setLoading(false);
         }
     };
-
     // Loading state
     if (loading && products.length === 0) {
         return (
