@@ -350,15 +350,15 @@ const JuicePOS = () => {
                     {filteredItems.map((item) => (
                         <div
                             key={item.id}
-                            className="bg-gray-50 rounded-lg p-4 cursor-pointer hover:bg-green-50 transition-all border border-green-100 flex flex-col items-center relative"
+                            className="bg-gray-50 rounded-lg p-2 cursor-pointer hover:bg-green-100 transition-all border border-green-100 flex flex-col items-center relative"
                             onClick={() => addToCart(item)}
                         >
-                            <div className="flex justify-between items-start w-full">
+                            <div className="flex justify-end w-full">
                                 <span className="bg-green-500 text-white text-xs font-semibold px-2 py-1 rounded">
                                     {item.id}
                                 </span>
                             </div>
-                            <div className="h-24 w-24 my-2 flex items-center justify-center">
+                            <div className="h-40 w-40 my-3 flex items-center justify-center">
                                 <img
                                     src={getFullUrl(item.image)}
                                     alt={item.name}
@@ -373,10 +373,12 @@ const JuicePOS = () => {
                                     }}
                                 />
                             </div>
-                            <h3 className="font-semibold mt-2 text-center">
+
+                            {/* Product name and price */}
+                            <h3 className="font-semibold text-center">
                                 {item.name}
                             </h3>
-                            <p className="text-gray-700">
+                            <p className="text-black">
                                 ₱{item.price.toFixed(2)}
                             </p>
                         </div>
